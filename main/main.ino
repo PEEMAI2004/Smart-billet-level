@@ -50,31 +50,12 @@ bool isLevel(int valx, int valy, int valz) {
   }
 }
 
-void setup() {
-  Wire.begin();
-  Serial.begin(115200);
-  pinMode(buzzerPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
-
-  Serial.println("Initialize MPU");
-  mpu.initialize();
-  Serial.println(mpu.testConnection() ? "MPU: Connected" : "MPU: Connection failed");
-  Serial.println("Initialize OLED");
-  Serial.println(OLED.begin() ? "Screen: Connected" : "Screen: Connection failed");
-}
-void loop() {
-  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-  valx = map(ax, -17000, 17000, 0, 179);
-  valy = map(ay, -17000, 17000, 0, 179);
-  valz = map(az, -17000, 17000, 0, 179);
-
-  Serial.print(" axis x = ");
-  Serial.print(valx);
-  Serial.print(" axis y = ");
-  Serial.print(valy);
-  Serial.print(" axis z = ");
-  Serial.print(valz);
-
+void DisplayLandscape(int valx, int valy, int valz, bool flip) {
+  if (flip) {
+    OLED.setRotation(2);
+  } else {
+    OLED.setRotation(0);
+  }
   OLED.clearDisplay();
   OLED.setTextColor(SH110X_WHITE);
   OLED.setCursor(0, 0);
@@ -88,5 +69,60 @@ void loop() {
   OLED.println(isLevel(valx, valy, valz) ? "Level!" : "Not Level");
 
   OLED.display();
+}
+
+void DisplayPortrait(int valx, int valy, int valz, bool flip) {
+  if (flip) {
+    OLED.setRotation(1);
+  } else {
+    OLED.setRotation(3);
+  }
+  OLED.clearDisplay();
+  OLED.setTextColor(SH110X_WHITE);
+  OLED.setCursor(0, 0);
+  OLED.setTextSize(2);
+  OLED.print("x ");
+  OLED.println(valx);
+  OLED.println();
+  OLED.print("y ");
+  OLED.println(valy);
+  OLED.println();
+  OLED.print("z ");
+  OLED.println(valz);
+  OLED.println();
+  OLED.println(isLevel(valx, valy, valz) ? "Level" : "Not\nLevel");
+
+  OLED.display();
+}
+
+void setup() {
+  Wire.begin();
+  Serial.begin(115200);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(buttonPin, INPUT);
+
+  Serial.println("Initialize MPU");
+  mpu.initialize();
+  Serial.println(mpu.testConnection() ? "MPU: Connected" : "MPU: Connection failed");
+  Serial.println("Initialize OLED");
+  Serial.println(OLED.begin() ? "Screen: Connected" : "Screen: Connection failed");
+}
+
+void loop() {
+  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  valx = map(ax, -17000, 17000, 0, 179);
+  valy = map(ay, -17000, 17000, 0, 179);
+  valz = map(az, -17000, 17000, 0, 179);
+
+  Serial.print(" axis x = ");
+  Serial.print(valx);
+  Serial.print(" axis y = ");
+  Serial.print(valy);
+  Serial.print(" axis z = ");
+  Serial.print(valz);
+
+  // DisplayLandscape(valx, valy, valz, true);
+  // DisplayPortrait(valx, valy, valz, true);
+
   delay(100);
 }
