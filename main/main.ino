@@ -20,9 +20,9 @@ Adafruit_SH1106G OLED(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Pins
 // i2c pin is D1 for SCL and D2 for SDA
-const int buttonPin = D5;
+const int button0Pin = D5;
 const int buzzerPin = D0;
-int buttonState = 0;
+// int buttonState = 0;
 
 // Configs
 int diff = 10;
@@ -99,13 +99,15 @@ void setup() {
   Wire.begin();
   Serial.begin(115200);
   pinMode(buzzerPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
+  pinMode(button0Pin, INPUT);
 
   Serial.println("Initialize MPU");
   mpu.initialize();
   Serial.println(mpu.testConnection() ? "MPU: Connected" : "MPU: Connection failed");
   Serial.println("Initialize OLED");
   Serial.println(OLED.begin() ? "Screen: Connected" : "Screen: Connection failed");
+  
+  // myButton.begin();
 }
 
 void loop() {
@@ -121,8 +123,24 @@ void loop() {
   Serial.print(" axis z = ");
   Serial.print(valz);
 
-  // DisplayLandscape(valx, valy, valz, true);
-  // DisplayPortrait(valx, valy, valz, true);
+  unsigned long now = millis();
 
-  delay(100);
+  int orentation = 0;
+
+  switch (orentation) {
+    case 0:
+      DisplayLandscape(valx, valy, valz, false);
+      break;
+    case 1:
+      DisplayPortrait(valx, valy, valz, false);
+      break;
+      case 2:
+      DisplayLandscape(valx, valy, valz, true);
+      break;
+    case 3:
+      DisplayPortrait(valx, valy, valz, true);
+      break; 
+  }
+
+  delay(1000);
 }
