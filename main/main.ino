@@ -1,15 +1,13 @@
 #include "I2Cdev.h"
-#include "MPU6050_6Axis_MotionApps20.h"
 #include "Wire.h"
-#include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
 
 // MPU6050 at 60 (0x3C)
-MPU6050 mpu;
+Adafruit_MPU6050 mpu;
 int16_t ax, ay, az;
-int16_t gx, gy, gz;
-int valx, valy, valz;
 
 // OLED screen at 104 (0x68)
 #define SCREEN_WIDTH 128
@@ -17,10 +15,8 @@ int valx, valy, valz;
 #define OLED_RESET -1
 Adafruit_SH1106G OLED(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-
 // Pins
 // i2c pin is D1 for SCL and D2 for SDA
-const int button0Pin = D5;
 const int buzzerPin = D0;
 // int buttonState = 0;
 
@@ -99,11 +95,9 @@ void setup() {
   Wire.begin();
   Serial.begin(115200);
   pinMode(buzzerPin, OUTPUT);
-  pinMode(button0Pin, INPUT);
 
   Serial.println("Initialize MPU");
-  mpu.initialize();
-  Serial.println(mpu.testConnection() ? "MPU: Connected" : "MPU: Connection failed");
+  Serial.println(mpu.begin() ? "MPU: Connected" : "MPU: Connection failed");
   Serial.println("Initialize OLED");
   Serial.println(OLED.begin() ? "Screen: Connected" : "Screen: Connection failed");
   
@@ -111,10 +105,17 @@ void setup() {
 }
 
 void loop() {
-  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-  valx = map(ax, -17000, 17000, 0, 179);
-  valy = map(ay, -17000, 17000, 0, 179);
-  valz = map(az, -17000, 17000, 0, 179);
+  // get raw value
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  float roll  = atan2(a.acceleration.y, a.acceleration.z) * 180.0 / PI;
+  float pitch = atan2(-a.acceleration.x, sqrt(a.acceleration.y * a.acceleration.y + a.acceleration.z * a.acceleration.z)) * 180.0 / PI;
+  float yaw   = atan2(a.acceleration.z, a.acceleration.x) * 180.0 / PI;
+
+  float valx = roll;
+  float valy = pitch;
+  float valz = yaw;
 
   Serial.print(" axis x = ");
   Serial.print(valx);
@@ -122,8 +123,6 @@ void loop() {
   Serial.print(valy);
   Serial.print(" axis z = ");
   Serial.print(valz);
-
-  unsigned long now = millis();
 
   int orentation = 0;
 
