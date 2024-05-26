@@ -8,6 +8,7 @@
 
 int orentation = 2;
 int buttonstate;
+int level = 90;
 
 // MPU6050 at 60 (0x3C)
 Adafruit_MPU6050 mpu;
@@ -28,6 +29,7 @@ const int buzzerPin = D0;
 int diff = 1;
 
 bool isLevelAxis(int val) {
+  val = abs(val);
   if (val - diff <= 0 || val + diff >= 45) {
     return true;
   }
@@ -35,11 +37,9 @@ bool isLevelAxis(int val) {
 }
 
 bool isLevel(int roll, int pitch, int yall) {
-  roll = roll % 90;
-  pitch = pitch % 90;
-  yall = yall % 90;
+  yall = yall % level;
 
-  if (isLevelAxis(roll) && isLevelAxis(pitch) && isLevelAxis(yall)) {
+  if (isLevelAxis(yall)) {
     // Serial.println(" Level");
     return true;
   } else {
@@ -58,6 +58,9 @@ void DisplayLandscape(float roll, float pitch, float yall, bool flip) {
   float maxV = 4.2;
   float voltage = analogRead(A0) * (3.30 / 1023.00) * 5;
   int percentage = 100 * (voltage - minV) / (maxV - minV);
+  if (percentage >= 100) {
+    percentage = 100;
+  }
   OLED.clearDisplay();
   OLED.setTextColor(SH110X_WHITE);
   OLED.setCursor(0, 0);
@@ -66,7 +69,16 @@ void DisplayLandscape(float roll, float pitch, float yall, bool flip) {
   OLED.println("%\n");
   OLED.setTextSize(2);
   OLED.println(yall);
-  OLED.println(isLevel(roll, pitch, yall) ? "Level!" : "Not Level");
+
+  bool levelStatus = isLevel(roll, pitch, yall);
+  OLED.println(levelStatus ? "Level!" : "Not Level");
+
+  // Sound buzzer based on level status
+  if (levelStatus) {
+    tone(buzzerPin, 4000);  // High tone when level
+  } else {
+    tone(buzzerPin, 1000);  // Low tone when not level
+  }
 
   OLED.display();
 }
@@ -77,17 +89,36 @@ void DisplayPortrait(float roll, float pitch, float yall, bool flip) {
   } else {
     OLED.setRotation(3);
   }
+  float minV = 3.0;
+  float maxV = 4.2;
+  float voltage = analogRead(A0) * (3.30 / 1023.00) * 5;
+  int percentage = 100 * (voltage - minV) / (maxV - minV);
+  if (percentage >= 100) {
+    percentage = 100;
+  }
   OLED.clearDisplay();
   OLED.setTextColor(SH110X_WHITE);
   OLED.setCursor(0, 0);
   OLED.setTextSize(1);
-  OLED.println("roll \n");
-  OLED.println(roll);
-  OLED.println("pitch \n");
-  OLED.println(pitch);
-  OLED.println("yall \n");
-  OLED.println(yall);
-  OLED.println(isLevel(roll, pitch, yall) ? "Level" : "NotLevel");
+  OLED.println();
+  OLED.print(percentage);
+  OLED.println("%\n ");
+  OLED.setTextSize(2);
+  int integer = static_cast<int>(yall);
+  int decimal = abs((yall - integer) * 100);
+  OLED.println(integer);
+  OLED.print(".");
+  OLED.println(decimal);
+
+  bool levelStatus = isLevel(roll, pitch, yall);
+  OLED.println(levelStatus ? "\n\nLevel" : "\nNot\nLevel");
+
+  // Sound buzzer based on level status
+  if (levelStatus) {
+    tone(buzzerPin, 4000);  // High tone when level
+  } else {
+    tone(buzzerPin, 1000);  // Low tone when not level
+  }
 
   OLED.display();
 }
@@ -122,7 +153,7 @@ void setup() {
 }
 
 // Analog input
-int analoginput() {
+int analogInput() {
   int analogValue = analogRead(A0);
   float voltage = analogValue * (3.30 / 1023.00);
 
@@ -138,16 +169,13 @@ int analoginput() {
   } else if (voltage >= 1.5) {
     // Serial.println("Button 1");
     return 1;
-  } else {
-    Serial.print("Battery Voltage: ");
-    Serial.println(voltage * 5);
-    return 0;
   }
+  return 0;
 }
 
-int buttoninput() {
+int buttonnput() {
   // do {
-  int buttonRead = analoginput();
+  int buttonRead = analogInput();
   if (buttonRead = 0) {
     buttonstate = buttonRead;
     // break;
@@ -170,10 +198,9 @@ void loop() {
   float pitch = atan2(-a.acceleration.x, sqrt(a.acceleration.y * a.acceleration.y + a.acceleration.z * a.acceleration.z)) * 180.0 / PI;
   float yaw = atan2(a.acceleration.z, a.acceleration.x) * 180.0 / PI;
 
-  //buttoninput();
-  Serial.println(analogRead(A0) * 3.30 / 1023.00);
+  // buttoninput();
 
-  tone(buzzerPin, 4000);
+  Serial.println(analogRead(A0) * 3.30 / 1023.00);
 
   // Serial.print(" axis x = ");
   // Serial.print(valx);
@@ -182,9 +209,60 @@ void loop() {
   // Serial.print(" axis z = ");
   // Serial.print(valz);
 
-  Display(roll, pitch, roll, orentation % 5);
+  if (analogInput() == 4) {
+    orentation += 1;
+    delay(1000);
+  } else if (analogInput() == 3) {
+    if (diff >= 10) {
+      diff = 10;
+    } else {
+      diff += 1;
+    }
+    delay(100);
+    OLED.setCursor(0, 0);
+    OLED.clearDisplay();
+    OLED.setTextColor(SH110X_WHITE);
+    OLED.setCursor(0, 0);
+    OLED.setTextSize(3);
+    OLED.print("Offset\n+- ");
+    OLED.println(diff);
+    OLED.display();
+    delay(1000);
+  } else if (analogInput() == 2) {
+    if (diff <= 0) {
+      diff = 0;
+    } else {
+      diff = diff - 1;
+    }
+    delay(100);
+    OLED.setCursor(0, 0);
+    OLED.clearDisplay();
+    OLED.setTextColor(SH110X_WHITE);
+    OLED.setCursor(0, 0);
+    OLED.setTextSize(3);
+    OLED.print("Offset\n+- ");
+    OLED.println(diff);
+    OLED.display();
+    delay(1000);
+  } else if (analogInput() == 1) {
+    if (level == 90) {
+      level = 45;
+    } else if (level == 45) {
+      level = 90;
+    }
+    OLED.setCursor(0, 0);
+    OLED.clearDisplay();
+    OLED.setTextColor(SH110X_WHITE);
+    OLED.setCursor(0, 0);
+    OLED.setTextSize(3);
+    OLED.println("Mode ");
+    OLED.print(level);
+    OLED.println(" Deg");
+    OLED.display();
+    delay(1000);
+  }
 
+  Display(roll, pitch, roll, orentation % 4);
 
-
-  delay(1000);
+  delay(100);
 }
